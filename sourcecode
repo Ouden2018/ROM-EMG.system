@@ -1,0 +1,301 @@
+import com.leapmotion.leap.*;
+import com.leapmotion.leap.Bone;
+import de.voidplus.myo.*;
+
+Controller leap = new Controller();
+
+Myo myo;
+ArrayList<ArrayList<Integer>> sensors;
+
+// Button
+int rectX1, rectY1, rectX2, rectY2;  // Position of square button
+int rectWidth, rectHeight;  // Diameter of rect
+color rect1Color, rect2Color, radioColor, baseColor;
+color overColor, pressColor;
+boolean rect1Over = false;
+boolean rect2Over = false;
+
+Radio[] buttons = new Radio[2];
+
+PrintWriter ROM, EmgData;
+
+int timer = 0;
+
+int x = 130;
+int y = 220;
+
+// position of EMG graph
+int dataX = 20;
+int dataY = 120;
+int dataW = 60;
+int emgX = dataX + 70;
+int emgY = dataY - 17;
+int emgW = 60;
+int emgH = 20;
+
+
+void setup(){
+  size(800, 600, P3D);
+  colorMode(HSB, 360, 100, 100);  
+  noStroke();
+  textSize(20);
+  frameRate(10);
+  
+  // rect Colors
+  rect1Color = rect2Color = baseColor = color(220, 80, 80);
+  radioColor = color(160, 90, 70);
+  overColor = color(50, 80, 80);
+  pressColor = color(10, 95, 95);
+  
+  // rect Position and Size
+  rectX1 = width-200;
+  rectY1 = 35;
+  rectX2 = width-130;
+  rectY2 = 35;
+  rectWidth = 50;
+  rectHeight = 30;
+  
+  buttons[0] = new Radio(100, 50, 40, radioColor, color(0, 0, 90), 0, buttons);
+  buttons[1] = new Radio(165, 50, 40, radioColor, color(0, 0, 90), 1, buttons);
+  
+  //enable EMG data
+  myo = new Myo(this, true);
+  sensors = new ArrayList<ArrayList<Integer>>();
+  for(int i=0; i<8; i++){
+    sensors.add(new ArrayList<Integer>());
+  }
+  
+  // save Data
+    ROM   = createWriter("ROM1108-45.csv");
+  EmgData = createWriter("EMG1108-11.csv");
+}
+
+
+void draw(){
+  background(0, 0, 0);
+  
+  // create Buttons
+  update(mouseX, mouseY);
+  
+  // Start and Stop Button
+  fill(0, 0, 90);
+  text("Start", rectX1+3, rectY1-10);
+  text("Stop", rectX2+3, rectY2-10);
+  text("Left    Right", 80, 20);
+  
+  
+  if (rect1Over) {
+    fill(overColor);
+  } else {
+    fill(rect1Color);
+  }
+  rect(rectX1, rectY1, rectWidth, rectHeight);
+  
+  if (rect2Over) {
+    fill(overColor);
+  } else {
+    fill(rect2Color);
+  }
+  rect(rectX2, rectY2, rectWidth, rectHeight);
+  
+  buttons[0].display1();
+  buttons[1].display2();
+  
+  
+  // Myo data
+  fill(0, 0, 90);
+  text("Data1", dataX, dataY);
+  text("Data2", dataX, dataY + dataW);
+  text("Data3", dataX, dataY + dataW * 2);
+  text("Data4", dataX, dataY + dataW * 3);
+  text("Data5", dataX, dataY + dataW * 4);
+  text("Data6", dataX, dataY + dataW * 5);
+  text("Data7", dataX, dataY + dataW * 6);
+  text("Data8", dataX, dataY + dataW * 7);
+  
+  fill(0, 0, 85);
+  int emgM = 150;
+  rect(emgX, emgY, emgM, emgH);
+  rect(emgX, emgY + emgW, emgM, emgH);
+  rect(emgX, emgY + emgW*2, emgM, emgH);
+  rect(emgX, emgY + emgW*3, emgM, emgH);
+  rect(emgX, emgY + emgW*4, emgM, emgH);
+  rect(emgX, emgY + emgW*5, emgM, emgH);
+  rect(emgX, emgY + emgW*6, emgM, emgH);
+  rect(emgX, emgY + emgW*7, emgM, emgH);
+  
+  
+  // Timer(5sec)
+  if(rect1Color == pressColor){
+    timer++;
+    if(timer>5*10){
+      ROM.close();
+      EmgData.close();
+      exit();
+    }
+  }
+  
+  
+  // direction of movements
+  pushMatrix();
+  translate(width/2, height-580);
+  fill(0, 0, 90);
+  rect(x-150, y-1, 300, 2);
+  rect(x-1, y-100, 2, 200);
+  
+  text("Radial", x-30, y-115);
+  text("Ulnar", x-25, y+120);
+  popMatrix();
+  
+  
+  // get EMG data
+  if(rect1Color == pressColor){
+    int[] data = myo.getEmg();
+    myoOnEmgData(data);
+  }
+  
+  // get Hand, Finger, Bone
+  Frame frame = leap.frame();
+  HandList hands = frame.hands();
+  
+  for(int i=0; i<hands.count(); i++){
+    Hand hand = hands.get(i);
+    drawPalm(hand);
+  }
+  
+}
+
+
+// get Hand Position 
+void drawPalm(Hand hand){
+  translate(width/2 + x, height-580);
+  
+  Vector palmPos =  hand.palmPosition();
+
+  float pitch = hand.direction().pitch();
+  float yaw = hand.direction().yaw();
+  float roll = hand.direction().roll();
+  
+  float pitchA = pitch * (180/PI);
+  float yawA = yaw * (180/PI);
+  float rollA = roll * (180/PI);
+  
+  // triangle
+  fill(10, 100, 90);
+  triangle(0, y, yawA, y, 0, -pitchA+y);
+  
+  /* finger position
+  for(Finger finger : hand.fingers()){
+    for(Bone.Type boneType : Bone.Type.values()){
+      Bone bone = finger.bone(boneType);
+      
+      Vector prev = bone.prevJoint();
+      Vector center = bone.center();
+      Vector next = bone.nextJoint();
+         
+      // display sphere at prevJoint Position
+      pushMatrix();
+      translate(prev.getX(), height-prev.getY(), prev.getZ());
+      fill(0, 0, 90);
+      sphere(3);
+      popMatrix();
+       
+      // display sphere at nextJoint Position
+      pushMatrix();
+      translate(next.getX(), height-next.getY(), next.getZ());
+      fill(0, 0, 90);
+      sphere(3);
+      popMatrix();
+      
+                                   
+      // get FingerType and BoneType and position
+      println(finger.type() + "\t" + bone.type() + "\t" + next + "\t" + prev);
+    }
+  }*/
+  
+  if(rect1Color == pressColor){
+    // ouput Data
+    fill(0, 0, 90);
+    ROM.println(nf(yawA,0, 1) + "\t" + nf(pitchA, 0, 1) + "\t" + nf(rollA, 0, 1));
+  }
+  
+  fill(0, 0, 90);
+  // text
+  text("Extension/Flexion : " + nf(yawA, 0, 1) + "\n" , -200, 20);
+  text("     Radial/Ulnar     : " + nf(pitchA, 0, 1) + "\n", -200, 45);
+}
+
+
+void myoOnEmgData(int[] data){
+  // int[] data <- 8 values from -128 to 127
+  
+  int Data1 = (int) constrain(abs(data[0]), 0, 100);
+  int Data2 = (int) constrain(abs(data[1]), 0, 100);
+  int Data3 = (int) constrain(abs(data[2]), 0, 100);
+  int Data4 = (int) constrain(abs(data[3]), 0, 100);
+  int Data5 = (int) constrain(abs(data[4]), 0, 100);
+  int Data6 = (int) constrain(abs(data[5]), 0, 100);
+  int Data7 = (int) constrain(abs(data[6]), 0, 100);
+  int Data8 = (int) constrain(abs(data[7]), 0, 100);
+  
+  // EMG graph
+  fill(10, 110, 90);
+  float wide =1.5; // Myoのデータ拡張
+  
+  rect(emgX, emgY, Data1 * wide, emgH);
+  rect(emgX, emgY + emgW, Data2 * wide, emgH);
+  rect(emgX, emgY + emgW*2, Data3 * wide, emgH);
+  rect(emgX, emgY + emgW*3, Data4 * wide, emgH);
+  rect(emgX, emgY + emgW*4, Data5 * wide, emgH);
+  rect(emgX, emgY + emgW*5, Data6 * wide, emgH);
+  rect(emgX, emgY + emgW*6, Data7 * wide, emgH);
+  rect(emgX, emgY + emgW*7, Data8 * wide, emgH);
+  
+  
+  println( Data1 +"\t"+ Data2 +"\t"+ Data3 +"\t"+ Data4 +"\t"
+         + Data5 +"\t"+ Data6 +"\t"+ Data7 +"\t"+ Data8 );
+    
+  EmgData.println( Data1 +"\t"+ Data2 +"\t"+ Data3 +"\t"+ Data4 +"\t"
+                 + Data5 +"\t"+ Data6 +"\t"+ Data7 +"\t"+ Data8);
+}
+
+
+// when mouse over Buttons
+void update(int x, int y) {
+  if ( overRect(rectX1, rectY1, rectWidth, rectHeight) ) {
+    rect1Over = true;
+    rect2Over = false;
+  } else if ( overRect(rectX2, rectY2, rectWidth, rectHeight) ) {
+    rect1Over = false;
+    rect2Over = true;
+  } else {
+    rect1Over = rect2Over =  false;
+  }
+}
+
+// Button pressed
+void mousePressed() {
+  if (rect1Over) {
+    rect1Color = pressColor;
+    ROM.flush();
+    EmgData.flush();
+  }
+  if (rect2Over) {
+    ROM.close();
+    EmgData.close();
+    exit();
+  }
+  
+  buttons[0].press(mouseX, mouseY);
+  buttons[1].press(mouseX, mouseY);
+}
+
+// mouse Position
+boolean overRect(int x, int y, int width, int height)  {
+  if (mouseX >= x && mouseX <= x+width && 
+      mouseY >= y && mouseY <= y+height) {
+    return true;
+  } else {
+    return false;
+  }
+}
