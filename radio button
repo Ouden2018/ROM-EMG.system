@@ -1,0 +1,74 @@
+class Radio{
+  int x, y;
+  int size, dotSize;
+  color baseGray, dotGray;
+  boolean checked = false;
+  int me;
+  Radio[] others;
+  
+  Radio(int xp, int yp, int s, color b, color d, int m, Radio[] o){
+    x = xp;
+    y = yp;
+    size = s;
+    dotSize = size - size/3;
+    baseGray = b;
+    dotGray = d;
+    me = m;
+    others = o;
+  }
+  
+  // booleanの値をチェックして更新、trueまたはfalseを返す
+  boolean press(float mx, float my){
+    if(dist(x, y, mx, my) < size/2){
+      checked = true;
+      
+      for(int i = 0; i < others.length; i++){
+        if(i != me){
+          others[i].checked = false;
+        }
+      }
+      return true;
+    } else {
+      return false;
+    }
+  }
+  
+  // displayに描画
+  void display1(){  
+    noStroke();
+    fill(baseGray);
+    ellipse(x, y, size, size);
+    if(checked == true){
+      fill(dotGray);
+      ellipse(x, y, dotSize, dotSize);
+      
+      pushMatrix();
+      translate(width/2, height-580);
+      int x1 = 130;
+      int y1 = 220;
+      fill(0, 0, 90);
+      text("Extension", x1-200, y1-15);
+      text("Flexion", x1+130, y1-15);
+      popMatrix();
+    }
+  }
+  
+  void display2(){  
+    noStroke();
+    fill(baseGray);
+    ellipse(x, y, size, size);
+    if(checked == true){
+      fill(dotGray);
+      ellipse(x, y, dotSize, dotSize);
+      
+      pushMatrix();
+      translate(width/2, height-580);
+      int x2 = 130;
+      int y2 = 220;
+      fill(0, 0, 90);
+      text("Flexion", x2-190, y2-15);
+      text("Extension", x2+110, y2-15);
+      popMatrix();
+    }
+  }
+}
